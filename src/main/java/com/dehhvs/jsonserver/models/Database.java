@@ -1,10 +1,7 @@
 package com.dehhvs.jsonserver.models;
 
-import java.io.FileNotFoundException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.OptionalInt;
 import java.util.Set;
@@ -109,7 +106,9 @@ public class Database {
                         .filter(ele -> {
                             Boolean filtered = false;
                             for (String key : ele.keySet()) {
-                                if (ele.getString(key).equals(textSearch)) {
+                                String elementString = Utils.stripAccents(ele.get(key).toString()).toLowerCase();
+                                String searchString = Utils.stripAccents(textSearch).toLowerCase();
+                                if (elementString.contains(searchString)) {
                                     filtered = true;
                                 }
                             }
