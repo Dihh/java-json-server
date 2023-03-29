@@ -43,7 +43,7 @@ public class Produto {
         if (data.length() == 0) {
             status = HttpStatus.NOT_FOUND;
         }
-        data = database.filter_and(data, reqParam);
+        data = database.filter(data, reqParam);
         return new ResponseEntity<String>(data.toString(2), httpHeaders, status);
     }
 

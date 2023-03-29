@@ -2,6 +2,7 @@ package com.dehhvs.jsonserver.models;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.OptionalInt;
 import java.util.Set;
@@ -76,21 +77,32 @@ public class Database {
         return JSONCollection;
     }
 
-    public JSONArray filter_and(JSONArray data, Map<String, Object> filters) {
+    public JSONArray filter(JSONArray data, Map<String, Object> filters) {
         if (filters.containsKey("q")) {
             data = full_text_search(data, (String) filters.get("q"));
+            filters.remove("q");
         }
+        List<String> filtersAnd = filters.keySet().stream().filter(key -> !key.contains("_or")).toList();
+        List<String> filtersOr = filters.keySet().stream().filter(key -> key.contains("_or")).toList();
+
         JSONArray JSONcollectionObjectList = new JSONArray(
                 data.toList().stream()
                         .map(ele -> new JSONObject(HashMap.class.cast(ele)))
                         .filter(ele -> {
                             Boolean filtered = true;
-                            for (String key : filters.keySet()) {
-                                if (key.equals("q")) {
-                                    continue;
-                                }
-                                if (!ele.getString(key).equals(filters.get(key))) {
+                            for (String key : filtersAnd) {
+                                String elementString = Utils.stripAccents(ele.get(key).toString()).toLowerCase();
+                                String searchString = Utils.stripAccents(filters.get(key).toString()).toLowerCase();
+                                if (!elementString.equals(searchString)) {
                                     filtered = false;
+                                }
+                            }
+                            for (String key : filtersOr) {
+                                String elementKey = key.subSequence(0, key.length() - 3).toString();
+                                String elementString = Utils.stripAccents(ele.get(elementKey).toString()).toLowerCase();
+                                String searchString = Utils.stripAccents(filters.get(key).toString()).toLowerCase();
+                                if (elementString.equals(searchString)) {
+                                    filtered = true;
                                 }
                             }
                             return filtered;
