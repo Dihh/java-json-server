@@ -82,9 +82,10 @@ public class Database {
             data = full_text_search(data, (String) filters.get("q"));
             filters.remove("q");
         }
-        List<String> filtersAnd = filters.keySet().stream().filter(key -> !key.contains("_or")).toList();
+        List<String> filtersLike = filters.keySet().stream().filter(key -> key.contains("_like")).toList();
         List<String> filtersOr = filters.keySet().stream().filter(key -> key.contains("_or")).toList();
-
+        List<String> filtersAnd = filters.keySet().stream()
+                .filter(key -> !key.contains("_or") && !key.contains("_like")).toList();
         JSONArray JSONcollectionObjectList = new JSONArray(
                 data.toList().stream()
                         .map(ele -> new JSONObject(HashMap.class.cast(ele)))
@@ -103,6 +104,14 @@ public class Database {
                                 String searchString = Utils.stripAccents(filters.get(key).toString()).toLowerCase();
                                 if (elementString.equals(searchString)) {
                                     filtered = true;
+                                }
+                            }
+                            for (String key : filtersLike) {
+                                String elementKey = key.subSequence(0, key.length() - 5).toString();
+                                String elementString = Utils.stripAccents(ele.get(elementKey).toString()).toLowerCase();
+                                String searchString = Utils.stripAccents(filters.get(key).toString()).toLowerCase();
+                                if (!elementString.contains(searchString)) {
+                                    filtered = false;
                                 }
                             }
                             return filtered;
