@@ -16,29 +16,6 @@ public class Database {
 
     FileManagment fileManagment = new FileManagment();
 
-    public JSONObject typing(Map<String, Object> reqParam) {
-        JSONObject element = new JSONObject();
-        for (String key : reqParam.keySet()) {
-            try {
-                Integer value = Integer.parseInt((String) reqParam.get(key));
-                element.put(key, value);
-            } catch (Exception e) {
-                try {
-                    Float value = Float.parseFloat((String) reqParam.get(key));
-                    element.put(key, value);
-                } catch (Exception er) {
-                    if (reqParam.get(key).equals("true") || reqParam.get(key).equals("false")) {
-                        Boolean value = Boolean.parseBoolean((String) reqParam.get(key));
-                        element.put(key, value);
-                    } else {
-                        element.put(key, reqParam.get(key));
-                    }
-                }
-            }
-        }
-        return element;
-    }
-
     public void write(JSONObject database) {
         try {
             fileManagment.writeFile(database.toString(2));
@@ -84,40 +61,114 @@ public class Database {
         }
         List<String> filtersLike = filters.keySet().stream().filter(key -> key.contains("_like")).toList();
         List<String> filtersOr = filters.keySet().stream().filter(key -> key.contains("_or")).toList();
+        List<String> filtersNot = filters.keySet().stream().filter(key -> key.contains("_not")).toList();
+        List<String> filtersGte = filters.keySet().stream().filter(key -> key.contains("_gte")).toList();
+        List<String> filtersLte = filters.keySet().stream().filter(key -> key.contains("_lte")).toList();
         List<String> filtersAnd = filters.keySet().stream()
-                .filter(key -> !key.contains("_or") && !key.contains("_like")).toList();
+                .filter(key -> !key.contains("_or") && !key.contains("_like") && !key.contains("_not")
+                        && !key.contains("_gte") && !key.contains("_lte"))
+                .toList();
         JSONArray JSONcollectionObjectList = new JSONArray(
                 data.toList().stream()
                         .map(ele -> new JSONObject(HashMap.class.cast(ele)))
-                        .filter(ele -> {
-                            Boolean filtered = true;
-                            for (String key : filtersAnd) {
-                                String elementString = Utils.stripAccents(ele.get(key).toString()).toLowerCase();
-                                String searchString = Utils.stripAccents(filters.get(key).toString()).toLowerCase();
-                                if (!elementString.equals(searchString)) {
-                                    filtered = false;
-                                }
-                            }
-                            for (String key : filtersOr) {
-                                String elementKey = key.subSequence(0, key.length() - 3).toString();
-                                String elementString = Utils.stripAccents(ele.get(elementKey).toString()).toLowerCase();
-                                String searchString = Utils.stripAccents(filters.get(key).toString()).toLowerCase();
-                                if (elementString.equals(searchString)) {
-                                    filtered = true;
-                                }
-                            }
-                            for (String key : filtersLike) {
-                                String elementKey = key.subSequence(0, key.length() - 5).toString();
-                                String elementString = Utils.stripAccents(ele.get(elementKey).toString()).toLowerCase();
-                                String searchString = Utils.stripAccents(filters.get(key).toString()).toLowerCase();
-                                if (!elementString.contains(searchString)) {
-                                    filtered = false;
-                                }
-                            }
-                            return filtered;
+                        .filter(element -> {
+                            StringBuilder filtered = new StringBuilder("true");
+                            this.filterAnd(filtersAnd, element, filters, filtered);
+                            this.filterOr(filtersOr, element, filters, filtered);
+                            this.filterLike(filtersLike, element, filters, filtered);
+                            this.filterNot(filtersNot, element, filters, filtered);
+                            this.filterGte(filtersGte, element, filters, filtered);
+                            this.filterLte(filtersLte, element, filters, filtered);
+                            return filtered.toString().equals("true");
                         })
                         .toList());
         return JSONcollectionObjectList;
+    }
+
+    public void filterAnd(List<String> filtersAnd, JSONObject element, Map<String, Object> filters,
+            StringBuilder filtered) {
+        for (String key : filtersAnd) {
+            String elementString = Utils.stripAccents(element.get(key).toString()).toLowerCase();
+            String searchString = Utils.stripAccents(filters.get(key).toString()).toLowerCase();
+            if (!elementString.equals(searchString)) {
+                filtered.append("false");
+            }
+        }
+    }
+
+    public void filterOr(List<String> filtersOr, JSONObject element, Map<String, Object> filters,
+            StringBuilder filtered) {
+        for (String key : filtersOr) {
+            String elementKey = key.subSequence(0, key.length() - 3).toString();
+            String elementString = Utils.stripAccents(element.get(elementKey).toString())
+                    .toLowerCase();
+            String searchString = Utils.stripAccents(filters.get(key).toString()).toLowerCase();
+            if (elementString.equals(searchString)) {
+                filtered.append("true");
+            }
+        }
+    }
+
+    public void filterLike(List<String> filtersLike, JSONObject element, Map<String, Object> filters,
+            StringBuilder filtered) {
+        for (String key : filtersLike) {
+            String elementKey = key.subSequence(0, key.length() - 5).toString();
+            String elementString = Utils.stripAccents(element.get(elementKey).toString())
+                    .toLowerCase();
+            String searchString = Utils.stripAccents(filters.get(key).toString()).toLowerCase();
+            if (!elementString.contains(searchString)) {
+                filtered.append("false");
+            }
+        }
+    }
+
+    public void filterNot(List<String> filtersNot, JSONObject element, Map<String, Object> filters,
+            StringBuilder filtered) {
+        for (String key : filtersNot) {
+            String elementKey = key.subSequence(0, key.length() - 4).toString();
+            String elementString = Utils.stripAccents(element.get(elementKey).toString())
+                    .toLowerCase();
+            String searchString = Utils.stripAccents(filters.get(key).toString()).toLowerCase();
+            if (elementString.equals(searchString)) {
+                filtered.append("false");
+            }
+        }
+    }
+
+    public void filterGte(List<String> filtersGte, JSONObject element, Map<String, Object> filters,
+            StringBuilder filtered) {
+        for (String key : filtersGte) {
+            String elementKey = key.subSequence(0, key.length() - 4).toString();
+            String elementString = Utils.stripAccents(element.get(elementKey).toString())
+                    .toLowerCase();
+            try {
+                Float elementFloat = Float.parseFloat(elementString);
+                Float searchFloat = Float.parseFloat(filters.get(key).toString());
+                if (elementFloat < searchFloat) {
+                    filtered.append("false");
+                }
+            } catch (Exception e) {
+                filtered.append("false");
+            }
+        }
+    }
+
+    public void filterLte(List<String> filtersLte, JSONObject element, Map<String, Object> filters,
+            StringBuilder filtered) {
+        for (String key : filtersLte) {
+            String elementKey = key.subSequence(0, key.length() - 4).toString();
+            String elementString = Utils.stripAccents(element.get(elementKey).toString())
+                    .toLowerCase();
+            try {
+                Float elementFloat = Float.parseFloat(elementString);
+                Float searchFloat = Float.parseFloat(filters.get(key).toString());
+                if (elementFloat > searchFloat) {
+                    filtered.append("false");
+                }
+            } catch (Exception e) {
+                filtered.append("false");
+            }
+        }
     }
 
     public JSONArray full_text_search(JSONArray data, String textSearch) {
@@ -155,7 +206,7 @@ public class Database {
     }
 
     public JSONObject post(Map<String, Object> reqParam, String collection) {
-        JSONObject JSONreqParam = typing(reqParam);
+        JSONObject JSONreqParam = Utils.typing(reqParam);
 
         JSONObject database = getAll();
 
@@ -172,7 +223,7 @@ public class Database {
     }
 
     public JSONObject put(Map<String, Object> reqParam, String collection, String id) {
-        JSONObject JSONreqParam = typing(reqParam);
+        JSONObject JSONreqParam = Utils.typing(reqParam);
         JSONObject database = getAll();
 
         JSONArray JSONCollection = findCollection(database, collection);
@@ -195,7 +246,7 @@ public class Database {
     }
 
     public JSONObject patch(Map<String, Object> reqParam, String collection, String id) {
-        JSONObject JSONreqParam = typing(reqParam);
+        JSONObject JSONreqParam = Utils.typing(reqParam);
         JSONObject database = getAll();
 
         JSONArray JSONCollection = findCollection(database, collection);
