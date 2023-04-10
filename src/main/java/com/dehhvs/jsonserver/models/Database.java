@@ -72,7 +72,7 @@ public class Database {
                 data.toList().stream()
                         .map(ele -> new JSONObject(HashMap.class.cast(ele)))
                         .filter(element -> {
-                            StringBuilder filtered = new StringBuilder("true");
+                            StringBuilder filtered = new StringBuilder("false");
                             this.filterAnd(filtersAnd, element, filters, filtered);
                             this.filterOr(filtersOr, element, filters, filtered);
                             this.filterLike(filtersLike, element, filters, filtered);
@@ -90,8 +90,8 @@ public class Database {
         for (String key : filtersAnd) {
             String elementString = Utils.stripAccents(element.get(key).toString()).toLowerCase();
             String searchString = Utils.stripAccents(filters.get(key).toString()).toLowerCase();
-            if (!elementString.equals(searchString)) {
-                filtered.append("false");
+            if (elementString.equals(searchString)) {
+                filtered.replace(0, filtered.length(), "true");
             }
         }
     }
@@ -104,7 +104,7 @@ public class Database {
                     .toLowerCase();
             String searchString = Utils.stripAccents(filters.get(key).toString()).toLowerCase();
             if (elementString.equals(searchString)) {
-                filtered.append("true");
+                filtered.replace(0, filtered.length(), "true");
             }
         }
     }
@@ -116,8 +116,8 @@ public class Database {
             String elementString = Utils.stripAccents(element.get(elementKey).toString())
                     .toLowerCase();
             String searchString = Utils.stripAccents(filters.get(key).toString()).toLowerCase();
-            if (!elementString.contains(searchString)) {
-                filtered.append("false");
+            if (elementString.contains(searchString)) {
+                filtered.replace(0, filtered.length(), "true");
             }
         }
     }
@@ -129,8 +129,8 @@ public class Database {
             String elementString = Utils.stripAccents(element.get(elementKey).toString())
                     .toLowerCase();
             String searchString = Utils.stripAccents(filters.get(key).toString()).toLowerCase();
-            if (elementString.equals(searchString)) {
-                filtered.append("false");
+            if (!elementString.equals(searchString)) {
+                filtered.replace(0, filtered.length(), "true");
             }
         }
     }
@@ -144,11 +144,10 @@ public class Database {
             try {
                 Float elementFloat = Float.parseFloat(elementString);
                 Float searchFloat = Float.parseFloat(filters.get(key).toString());
-                if (elementFloat < searchFloat) {
-                    filtered.append("false");
+                if (elementFloat >= searchFloat) {
+                    filtered.replace(0, filtered.length(), "true");
                 }
             } catch (Exception e) {
-                filtered.append("false");
             }
         }
     }
@@ -162,11 +161,10 @@ public class Database {
             try {
                 Float elementFloat = Float.parseFloat(elementString);
                 Float searchFloat = Float.parseFloat(filters.get(key).toString());
-                if (elementFloat > searchFloat) {
-                    filtered.append("false");
+                if (elementFloat <= searchFloat) {
+                    filtered.replace(0, filtered.length(), "true");
                 }
             } catch (Exception e) {
-                filtered.append("false");
             }
         }
     }
