@@ -1,5 +1,6 @@
 package com.dehhvs.jsonserver.models;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -59,15 +60,23 @@ public class Database {
             data = full_text_search(data, (String) filters.get("q"));
             filters.remove("q");
         }
-        List<String> filtersLike = filters.keySet().stream().filter(key -> key.contains("_like")).toList();
-        List<String> filtersOr = filters.keySet().stream().filter(key -> key.contains("_or")).toList();
-        List<String> filtersNot = filters.keySet().stream().filter(key -> key.contains("_not")).toList();
-        List<String> filtersGte = filters.keySet().stream().filter(key -> key.contains("_gte")).toList();
-        List<String> filtersLte = filters.keySet().stream().filter(key -> key.contains("_lte")).toList();
-        List<String> filtersAnd = filters.keySet().stream()
-                .filter(key -> !key.contains("_or") && !key.contains("_like") && !key.contains("_not")
-                        && !key.contains("_gte") && !key.contains("_lte"))
-                .toList();
+        Map<String, Object> filtersClone = new HashMap<String, Object>();
+        filtersClone.putAll(filters);
+        List<String> filtersLike = filtersClone.keySet().stream().filter(key -> key.contains("_like")).toList();
+        filtersLike.forEach(filtersClone::remove);
+        List<String> filtersOr = filtersClone.keySet().stream().filter(key -> key.contains("_or")).toList();
+        filtersOr.forEach(filtersClone::remove);
+        List<String> filtersNotIn = filtersClone.keySet().stream().filter(key -> key.contains("_notin")).toList();
+        filtersNotIn.forEach(filtersClone::remove);
+        List<String> filtersNot = filtersClone.keySet().stream().filter(key -> key.contains("_not")).toList();
+        filtersNot.forEach(filtersClone::remove);
+        List<String> filtersGte = filtersClone.keySet().stream().filter(key -> key.contains("_gte")).toList();
+        filtersGte.forEach(filtersClone::remove);
+        List<String> filtersLte = filtersClone.keySet().stream().filter(key -> key.contains("_lte")).toList();
+        filtersLte.forEach(filtersClone::remove);
+        List<String> filtersIn = filtersClone.keySet().stream().filter(key -> key.contains("_in")).toList();
+        filtersIn.forEach(filtersClone::remove);
+        List<String> filtersAnd = filtersClone.keySet().stream().toList();
         JSONArray JSONcollectionObjectList = new JSONArray(
                 data.toList().stream()
                         .map(ele -> new JSONObject(HashMap.class.cast(ele)))
@@ -79,6 +88,8 @@ public class Database {
                             this.filterNot(filtersNot, element, filters, filtered);
                             this.filterGte(filtersGte, element, filters, filtered);
                             this.filterLte(filtersLte, element, filters, filtered);
+                            this.filterIn(filtersIn, element, filters, filtered);
+                            this.filterNotIn(filtersNotIn, element, filters, filtered);
                             return filtered.toString().equals("true");
                         })
                         .toList());
@@ -165,6 +176,32 @@ public class Database {
                     filtered.replace(0, filtered.length(), "true");
                 }
             } catch (Exception e) {
+            }
+        }
+    }
+
+    public void filterIn(List<String> filtersLte, JSONObject element, Map<String, Object> filters,
+            StringBuilder filtered) {
+        for (String key : filtersLte) {
+            String elementKey = key.subSequence(0, key.length() - 3).toString();
+            String elementString = Utils.stripAccents(element.get(elementKey).toString())
+                    .toLowerCase();
+            String[] searchStrings = Utils.stripAccents(filters.get(key).toString()).toLowerCase().split(",");
+            if (Arrays.stream(searchStrings).anyMatch(elementString::equals)) {
+                filtered.replace(0, filtered.length(), "true");
+            }
+        }
+    }
+
+    public void filterNotIn(List<String> filtersLte, JSONObject element, Map<String, Object> filters,
+            StringBuilder filtered) {
+        for (String key : filtersLte) {
+            String elementKey = key.subSequence(0, key.length() - 6).toString();
+            String elementString = Utils.stripAccents(element.get(elementKey).toString())
+                    .toLowerCase();
+            String[] searchStrings = Utils.stripAccents(filters.get(key).toString()).toLowerCase().split(",");
+            if (!Arrays.stream(searchStrings).anyMatch(elementString::equals)) {
+                filtered.replace(0, filtered.length(), "true");
             }
         }
     }
